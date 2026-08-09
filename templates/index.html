@@ -25,7 +25,7 @@
 
     body {
       font-family: "Segoe UI", -apple-system, Roboto, Arial, sans-serif;
-      max-width: 780px;
+      max-width: 1080px;
       margin: 0 auto;
       padding: 48px 20px 80px;
       color: var(--text-on-sky);
@@ -83,6 +83,19 @@
     }
     header .hint { color: var(--muted-on-sky); }
 
+    .layout {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+    }
+    .main { flex: 1; min-width: 0; }
+    .sidebar { flex: 0 0 260px; order: -1; }
+
+    @media (max-width: 720px) {
+      .layout { flex-direction: column; }
+      .sidebar { flex-basis: auto; width: 100%; order: 0; }
+    }
+
     .card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -91,6 +104,32 @@
       margin-top: 24px;
       color: var(--text);
       box-shadow: 0 8px 32px rgba(2, 20, 40, 0.28);
+    }
+
+    .location-list {
+      list-style: none;
+      margin: 16px 0 0;
+      padding: 0;
+    }
+    .location-list li {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .location-list li:last-child { border-bottom: none; }
+    .location-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .location-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .location-empty {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 16px;
     }
 
     label {
@@ -230,52 +269,65 @@
     </div>
   </header>
 
-  <div class="card">
-    <h2>Sync locations</h2>
-    <p class="hint">One location per line - "City, ST" (e.g. "Chicago, IL") or "lat,lon" (e.g. "41.8781,-87.6298").</p>
-    <form id="sync-form">
-      <label for="locations">Locations</label>
-      <textarea id="locations" name="locations" placeholder="Chicago, IL&#10;Austin, TX" required></textarea>
+  <div class="layout">
+    <div class="main">
+      <div class="card">
+        <h2>Sync locations</h2>
+        <p class="hint">One location per line - "City, ST" (e.g. "Chicago, IL") or "lat,lon" (e.g. "41.8781,-87.6298").</p>
+        <form id="sync-form">
+          <label for="locations">Locations</label>
+          <textarea id="locations" name="locations" placeholder="Chicago, IL&#10;Austin, TX" required></textarea>
 
-      <label for="limit">Limit (max documents synced per location)</label>
-      <input type="number" id="limit" name="limit" value="50" min="1">
+          <label for="limit">Limit (max documents synced per location)</label>
+          <input type="number" id="limit" name="limit" value="50" min="1">
 
-      <button type="submit" id="sync-btn">Sync</button>
-    </form>
+          <button type="submit" id="sync-btn">Sync</button>
+        </form>
 
-    <div id="sync-result"></div>
-  </div>
-
-  <div class="card">
-    <h2>Search</h2>
-    <p class="hint">Semantic search over synced weather documents (requires the embedding pipeline to have run).</p>
-    <form id="search-form">
-      <label for="query">Query</label>
-      <input type="text" id="query" name="query" placeholder="risk of flooding near rivers" required>
-
-      <div class="row">
-        <div>
-          <label for="top-k">Top K</label>
-          <input type="number" id="top-k" name="top_k" value="5" min="1" max="20">
-        </div>
+        <div id="sync-result"></div>
       </div>
 
-      <button type="submit" id="search-btn">Search</button>
-    </form>
+      <div class="card">
+        <h2>Search</h2>
+        <p class="hint">Semantic search over synced weather documents (requires the embedding pipeline to have run).</p>
+        <form id="search-form">
+          <label for="query">Query</label>
+          <input type="text" id="query" name="query" placeholder="risk of flooding near rivers" required>
 
-    <div id="search-status"></div>
+          <div class="row">
+            <div>
+              <label for="top-k">Top K</label>
+              <input type="number" id="top-k" name="top_k" value="5" min="1" max="20">
+            </div>
+          </div>
 
-    <table id="results-table" style="display: none;">
-      <thead>
-        <tr>
-          <th>Location</th>
-          <th>Headline</th>
-          <th>Chunk text</th>
-          <th>Similarity</th>
-        </tr>
-      </thead>
-      <tbody id="results-body"></tbody>
-    </table>
+          <button type="submit" id="search-btn">Search</button>
+        </form>
+
+        <div id="search-status"></div>
+
+        <table id="results-table" style="display: none;">
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Headline</th>
+              <th>Chunk text</th>
+              <th>Similarity</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="card">
+        <h2>Synced locations</h2>
+        <p class="hint">Locations already resolved into your locations table.</p>
+        <ul class="location-list" id="location-list"></ul>
+        <p class="location-empty" id="location-empty">No locations synced yet.</p>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -288,6 +340,35 @@
     const searchStatusEl = document.getElementById("search-status");
     const resultsTable = document.getElementById("results-table");
     const resultsBody = document.getElementById("results-body");
+
+    const locationList = document.getElementById("location-list");
+    const locationEmpty = document.getElementById("location-empty");
+
+    async function loadLocations() {
+      try {
+        const resp = await fetch("/locations");
+        const data = await resp.json();
+        if (!resp.ok) return;
+
+        locationList.innerHTML = "";
+        if (!data.length) {
+          locationEmpty.style.display = "";
+          return;
+        }
+        locationEmpty.style.display = "none";
+
+        data.forEach((loc) => {
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <div class="location-name">${escapeHtml(loc.raw_input)}</div>
+            <div class="location-meta">${escapeHtml(loc.grid_office || "-")} ${loc.grid_x ?? "-"},${loc.grid_y ?? "-"}</div>
+          `;
+          locationList.appendChild(li);
+        });
+      } catch (err) {
+        // Sidebar is non-critical - fail silently rather than blocking the page.
+      }
+    }
 
     syncForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -324,6 +405,7 @@
             .join("\n");
         }
         syncResultEl.textContent = text;
+        loadLocations();
       } catch (err) {
         syncResultEl.textContent = "Request failed: " + err;
       } finally {
@@ -390,6 +472,8 @@
       div.textContent = str;
       return div.innerHTML;
     }
+
+    loadLocations();
   </script>
 </body>
 </html>

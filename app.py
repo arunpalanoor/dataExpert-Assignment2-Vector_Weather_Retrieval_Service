@@ -55,6 +55,19 @@ def healthz():
     return jsonify({"status": "ok"})
 
 
+@app.route("/locations", methods=["GET"])
+def list_locations():
+    """Read already-synced locations from Lakebase, for the UI sidebar."""
+    rows = lakebase.run_query(
+        """
+        SELECT id, raw_input, latitude, longitude, grid_office, grid_x, grid_y, resolved_at
+        FROM locations
+        ORDER BY raw_input ASC
+        """
+    )
+    return jsonify(rows)
+
+
 @app.errorhandler(Exception)
 def handle_exception(err):
     """Ensure all unhandled errors return JSON (not an HTML error page)."""
