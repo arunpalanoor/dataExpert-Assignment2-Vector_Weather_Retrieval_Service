@@ -1,4 +1,4 @@
-# Vector_Weather_Retrieval_Service
+# Vector Weather Retrieval Service
 Weather Intelligence — Unstructured Data → Lakebase Vector Search → REST API
 
 # Overview
