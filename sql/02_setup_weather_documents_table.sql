@@ -1,8 +1,10 @@
 -- Setup script for weather_documents table
--- Run this manually in your Lakebase Postgres database before syncing weather data.
+-- Run this manually in your Lakebase Postgres database - 2nd SCRIPT.
 --
--- Raw document store for NWS alerts and forecast periods. References
--- locations(id) instead of duplicating lat/lon/grid info on every row.
+-- Raw document store for NWS alerts and forecast periods. References locations(id) instead of duplicating lat/lon/grid info on every row.
+
+--- Set search path to custome schema as Lakebase SQL EDITOR defaults to public schema
+SET search_path TO weather;
 
 CREATE TABLE IF NOT EXISTS weather_documents (
     id TEXT PRIMARY KEY,

@@ -1,13 +1,12 @@
 -- Setup script for weather_embeddings table
--- Run this manually in your Lakebase Postgres database before running the
--- embedding ingestion script.
+-- Run this manually in your Lakebase Postgres database - 3rd Script.
 --
--- Uses sentence-transformers/all-MiniLM-L6-v2 (384-dim), matching the
--- existing ticker_news_embeddings convention so both stay queryable with
--- the same pgvector distance operator.
+-- Uses sentence-transformers/all-MiniLM-L6-v2 (384-dim)
 
--- Enable pgvector extension (already enabled in this Lakebase instance, but
--- safe to run again)
+--- Set search path to custome schema as Lakebase SQL EDITOR defaults to public schema
+--- Added public to search path to use vector extension which was already set in public schema. It doesn't automatically get applied for all schemas and errors when used as a data type.
+SET search_path TO weather, public;
+
 CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS weather_embeddings (
