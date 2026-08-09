@@ -12,7 +12,7 @@ import getpass
 
 w = WorkspaceClient()
 
-w.secrets.create_scope(scope="weather")
+#w.secrets.create_scope(scope="weather")
 w.secrets.put_secret(
     scope="weather",
     key="lakebase-url",
