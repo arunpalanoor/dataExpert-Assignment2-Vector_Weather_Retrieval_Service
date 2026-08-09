@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vector Weather Retrieval Service</title>
+  <style>
+    :root {
+      --sky-1: #0a3d62;
+      --sky-2: #146aad;
+      --sky-3: #1e88c7;
+      --text-on-sky: #f4f8fc;
+      --muted-on-sky: #cfe8fb;
+      --card-bg: #faf8f4;
+      --card-border: #e7e2d9;
+      --text: #1f2430;
+      --muted: #667085;
+      --accent: #0078d4;
+      --accent-hover: #005a9e;
+      --highlight: #b45309;
+      --danger: #dc2626;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: "Segoe UI", -apple-system, Roboto, Arial, sans-serif;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 48px 20px 80px;
+      color: var(--text-on-sky);
+      background:
+        radial-gradient(1200px 600px at 15% -10%, rgba(0, 164, 239, 0.35), transparent 60%),
+        radial-gradient(900px 500px at 110% 10%, rgba(255, 185, 0, 0.12), transparent 55%),
+        linear-gradient(160deg, var(--sky-1) 0%, var(--sky-2) 45%, var(--sky-3) 100%);
+      background-attachment: fixed;
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 4px;
+    }
+
+    .logo-badge {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), var(--highlight));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(0, 164, 239, 0.35);
+      flex-shrink: 0;
+    }
+    .logo-badge svg { width: 22px; height: 22px; }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.01em;
+      color: var(--text-on-sky);
+    }
+
+    h2 {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: 0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 6px;
+      line-height: 1.55;
+    }
+    header .hint { color: var(--muted-on-sky); }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 26px;
+      margin-top: 24px;
+      color: var(--text);
+      box-shadow: 0 8px 32px rgba(2, 20, 40, 0.28);
+    }
+
+    label {
+      display: block;
+      margin-top: 16px;
+      font-weight: 600;
+      font-size: 12.5px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    label:first-of-type { margin-top: 0; }
+
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 11px 14px;
+      margin-top: 7px;
+      border: 1px solid #d8d4cb;
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #ffffff;
+      color: var(--text);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    input::placeholder, textarea::placeholder { color: #9aa0aa; }
+    textarea { resize: vertical; min-height: 76px; }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.18);
+    }
+
+    .row { display: flex; gap: 16px; }
+    .row > div { flex: 1; }
+
+    button {
+      margin-top: 20px;
+      padding: 11px 22px;
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #0088cc);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      box-shadow: 0 4px 14px rgba(0, 164, 239, 0.35);
+      transition: transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+    }
+    button:hover { box-shadow: 0 6px 20px rgba(0, 164, 239, 0.45); transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    #sync-result,
+    #search-status {
+      margin-top: 18px;
+      white-space: pre-wrap;
+      background: #f1efe9;
+      border: 1px solid var(--card-border);
+      padding: 13px 15px;
+      border-radius: 10px;
+      min-height: 20px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    #sync-result:empty, #search-status:empty { display: none; }
+
+    table {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--card-border);
+      font-size: 13.5px;
+      vertical-align: top;
+    }
+    th {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+    }
+    tbody tr { transition: background 0.15s ease; }
+    tbody tr:hover { background: #f5f3ee; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .chunk-text {
+      max-width: 340px;
+      color: var(--text);
+      line-height: 1.45;
+    }
+    .similarity {
+      font-variant-numeric: tabular-nums;
+      color: var(--highlight);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .headline {
+      font-weight: 600;
+      white-space: nowrap;
+      color: var(--text);
+    }
+    .location {
+      white-space: nowrap;
+      color: var(--muted);
+    }
+
+    .empty-row td {
+      color: var(--muted);
+      text-align: center;
+      padding: 22px 8px;
+    }
+
+    ::selection { background: rgba(0, 164, 239, 0.35); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-badge">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 15.5a4.5 4.5 0 0 1 .5-8.98A6 6 0 0 1 18 8a4 4 0 0 1-1 7.9H6.5A.5.5 0 0 1 6 15.5Z" fill="#ffffff"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Vector Weather Retrieval Service</h1>
+      <p class="hint">Sync NWS alerts + forecasts into Lakebase, then run semantic search over the ingested weather documents.</p>
+    </div>
+  </header>
+
+  <div class="card">
+    <h2>Sync locations</h2>
+    <p class="hint">One location per line - "City, ST" (e.g. "Chicago, IL") or "lat,lon" (e.g. "41.8781,-87.6298").</p>
+    <form id="sync-form">
+      <label for="locations">Locations</label>
+      <textarea id="locations" name="locations" placeholder="Chicago, IL&#10;Austin, TX" required></textarea>
+
+      <label for="limit">Limit (max documents synced per location)</label>
+      <input type="number" id="limit" name="limit" value="50" min="1">
+
+      <button type="submit" id="sync-btn">Sync</button>
+    </form>
+
+    <div id="sync-result"></div>
+  </div>
+
+  <div class="card">
+    <h2>Search</h2>
+    <p class="hint">Semantic search over synced weather documents (requires the embedding pipeline to have run).</p>
+    <form id="search-form">
+      <label for="query">Query</label>
+      <input type="text" id="query" name="query" placeholder="risk of flooding near rivers" required>
+
+      <div class="row">
+        <div>
+          <label for="top-k">Top K</label>
+          <input type="number" id="top-k" name="top_k" value="5" min="1" max="20">
+        </div>
+      </div>
+
+      <button type="submit" id="search-btn">Search</button>
+    </form>
+
+    <div id="search-status"></div>
+
+    <table id="results-table" style="display: none;">
+      <thead>
+        <tr>
+          <th>Location</th>
+          <th>Headline</th>
+          <th>Chunk text</th>
+          <th>Similarity</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const syncForm = document.getElementById("sync-form");
+    const syncBtn = document.getElementById("sync-btn");
+    const syncResultEl = document.getElementById("sync-result");
+
+    const searchForm = document.getElementById("search-form");
+    const searchBtn = document.getElementById("search-btn");
+    const searchStatusEl = document.getElementById("search-status");
+    const resultsTable = document.getElementById("results-table");
+    const resultsBody = document.getElementById("results-body");
+
+    syncForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const locations = document.getElementById("locations").value
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const limit = parseInt(document.getElementById("limit").value, 10) || 50;
+
+      if (!locations.length) {
+        syncResultEl.textContent = "Enter at least one location.";
+        return;
+      }
+
+      syncBtn.disabled = true;
+      syncResultEl.textContent = `Syncing ${locations.length} location(s)...`;
+
+      try {
+        const resp = await fetch("/weather/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ locations, limit }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          syncResultEl.textContent = "Error: " + (data.error || resp.statusText);
+          return;
+        }
+
+        let text = `Synced ${data.synced} document(s) across ${data.locations.length} location(s): ${data.locations.join(", ")}`;
+        if (data.errors) {
+          text += "\n\nErrors:\n" + Object.entries(data.errors)
+            .map(([loc, msg]) => `  ${loc}: ${msg}`)
+            .join("\n");
+        }
+        syncResultEl.textContent = text;
+      } catch (err) {
+        syncResultEl.textContent = "Request failed: " + err;
+      } finally {
+        syncBtn.disabled = false;
+      }
+    });
+
+    searchForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const query = document.getElementById("query").value.trim();
+      const topK = parseInt(document.getElementById("top-k").value, 10) || 5;
+
+      if (!query) {
+        searchStatusEl.textContent = "Enter a search query.";
+        return;
+      }
+
+      searchBtn.disabled = true;
+      resultsTable.style.display = "none";
+      searchStatusEl.textContent = "Searching...";
+
+      try {
+        const resp = await fetch("/weather/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, top_k: topK }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          searchStatusEl.textContent = "Error: " + (data.error || resp.statusText);
+          return;
+        }
+
+        if (!data.length) {
+          searchStatusEl.textContent = "No results. Have you run the embedding ingestion script yet?";
+          return;
+        }
+
+        searchStatusEl.textContent = "";
+        resultsBody.innerHTML = "";
+        data.forEach((row) => {
+          const tr = document.createElement("tr");
+          const similarity = row.similarity !== null && row.similarity !== undefined
+            ? Number(row.similarity).toFixed(3)
+            : "-";
+          tr.innerHTML = `
+            <td class="location">${escapeHtml(row.location || "-")}</td>
+            <td class="headline">${escapeHtml(row.headline || "-")}</td>
+            <td class="chunk-text">${escapeHtml(row.chunk_text || "-")}</td>
+            <td class="similarity">${similarity}</td>
+          `;
+          resultsBody.appendChild(tr);
+        });
+        resultsTable.style.display = "";
+      } catch (err) {
+        searchStatusEl.textContent = "Request failed: " + err;
+      } finally {
+        searchBtn.disabled = false;
+      }
+    });
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
